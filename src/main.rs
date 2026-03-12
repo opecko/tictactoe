@@ -19,7 +19,6 @@ macro_rules! color_println {
 }
 
 fn check_for_win(board: [char; 9]) -> Option<char> {
-    // 8 kombinací win
     let wins = [
         [0, 1, 2],
         [3, 4, 5],
@@ -39,25 +38,20 @@ fn check_for_win(board: [char; 9]) -> Option<char> {
     if !board.contains(&' ') {
         return Some('r');
     }
-
     None
 }
+
 fn print_board(board: [char; 9]) {
-    // print 3 rows of 3
     for row in 0..3 {
         for col in 0..3 {
             let idx = row * 3 + col;
             let c = board[idx];
-            // if space show 1-based index
             if c == ' ' {
-                // print number without newline
                 color_print!(87, 87, 87, " {} ", idx + 1);
+            } else if c == 'X' {
+                color_print!(255, 85, 70, " X ");
             } else {
-                if c == 'X' {
-                    color_print!(255, 85, 70, " X ");
-                } else {
-                    color_print!(7, 183, 247, " O ");
-                }
+                color_print!(7, 183, 247, " O ");
             }
             if col < 2 {
                 print!("|");
@@ -69,8 +63,6 @@ fn print_board(board: [char; 9]) {
         }
     }
 }
-
-// BOT FUNKCE
 
 fn evaluate(board: [char; 9]) -> Option<i32> {
     match check_for_win(board) {
@@ -85,7 +77,6 @@ fn minimax(board: [char; 9], is_maximizing: bool) -> i32 {
     if let Some(score) = evaluate(board) {
         return score;
     }
-
     if is_maximizing {
         let mut best = i32::MIN;
         for i in 0..9 {
@@ -129,37 +120,54 @@ fn bot_move(board: [char; 9]) -> usize {
 fn main() {
     let mut board = [' '; 9];
     let mut input = String::new();
-    let mut current_player: u8 = 0; // 0 => x ; 1 => y
+    let mut current_player: u8 = 0;
     let winner: char;
+
+    println!("Hrát proti botovi? (a/n)");
+    io::stdin().read_line(&mut input).unwrap();
+    let is_bot = input.trim() == "a";
+    input.clear();
 
     loop {
         execute!(stdout(), Clear(ClearType::All), MoveTo(0, 0)).unwrap();
         print_board(board);
-        io::stdin().read_line(&mut input).expect("Chyba na stdin!");
 
-        match input.trim() {
-            "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => {
-                let idx = input.trim().parse::<usize>().unwrap() - 1;
-                if board[idx] == ' ' {
-                    board[idx] = if current_player == 0 { 'X' } else { 'O' };
-
-                    match check_for_win(board) {
-                        Some(w) => {
-                            winner = w;
-                            execute!(stdout(), Clear(ClearType::All), MoveTo(0, 0)).unwrap();
-                            print_board(board);
-                            break;
-                        }
-                        None => println!(),
-                    };
-                    current_player ^= 1; // switch player
-                } else {
-                    println!("pole je uz obsazene!");
+        if current_player == 1 && is_bot {
+            // bot tah
+            let idx = bot_move(board);
+            board[idx] = 'O';
+        } else {
+            // hráč tah
+            io::stdin().read_line(&mut input).expect("Chyba na stdin!");
+            match input.trim() {
+                "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => {
+                    let idx = input.trim().parse::<usize>().unwrap() - 1;
+                    if board[idx] == ' ' {
+                        board[idx] = if current_player == 0 { 'X' } else { 'O' };
+                    } else {
+                        println!("Pole je už obsazené!");
+                        input.clear();
+                        continue;
+                    }
                 }
-            }
-            _ => println!("index neexistuje!"),
-        };
-        input.clear();
+                _ => {
+                    println!("Index neexistuje!");
+                    input.clear();
+                    continue;
+                }
+            };
+            input.clear();
+        }
+
+        // zkontroluj výhru po každém tahu
+        if let Some(w) = check_for_win(board) {
+            winner = w;
+            execute!(stdout(), Clear(ClearType::All), MoveTo(0, 0)).unwrap();
+            print_board(board);
+            break;
+        }
+
+        current_player ^= 1;
     }
 
     match winner {
@@ -177,5 +185,5 @@ fn main() {
         e => {
             panic!("ajajaj! {e}");
         }
-    };
+    }
 }
